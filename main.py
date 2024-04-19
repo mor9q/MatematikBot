@@ -121,12 +121,24 @@ async def button(update, context) -> None:
     """Функция обработки инлайн-кнопок"""
     query = update.callback_query
     query.answer()
-    await query.message.reply_text(f"Вы выбрали: {query.data}")
+    print(query.data)
+    if query.data == "Задние 1":
+        await query.message.reply_text("Теория по заданию №1")
+    else:
+        await query.message.reply_text(f"Вы выбрали: {query.data}")
 
 
 # Ответы
-async def handler_response(update, context):
-    ...
+async def handler_response(update, context) -> None:
+    """Функция обработки сообщений"""
+    chat_id = update.message.chat_id
+    text = update.message.text
+    if text == "1":
+        photo_path = "data/koala.jpg"
+        await context.bot.send_photo(chat_id=chat_id, photo=open(photo_path, "rb"))
+    elif text == "2":
+        photo_path = "data/house.jpg"
+        await context.bot.send_photo(chat_id=chat_id, photo=open(photo_path, "rb"))
 
 
 def main() -> None:
@@ -141,6 +153,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(button))
     application.add_handler(MessageHandler(filters.Regex("Учебник 📚"), tutorial))
     application.add_handler(MessageHandler(filters.Regex("Практика ✍"), practice))
+    application.add_handler(MessageHandler(filters.TEXT, handler_response))
 
     # Запуск бота
     application.run_polling()
