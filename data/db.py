@@ -34,7 +34,7 @@ def insert_blob(id, name, photo):
 
 
 def write_to_file(data, filename):
-    # Преобразование двоичных данных в нужный формат
+    """Преобразование двоичных данных в нужный формат"""
     try:
         with open(filename, 'wb') as file:
             file.write(data)
