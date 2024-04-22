@@ -11,6 +11,7 @@ from telegram.ext import (
 
 from telegram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from config import BOT_TOKEN
+import sqlite3
 
 # Запуск логированияя
 logging.basicConfig(
@@ -24,6 +25,34 @@ bot = telegram.Bot(token=BOT_TOKEN)
 
 # reply_keyboard = [["Учебник 📚", "Практика ✍️"], ["Дополнительно ⚙️"]]
 # markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+# Синхронные функции
+
+def read_blob_data(emp_id):
+    try:
+        sqlite_connection = sqlite3.connect('sqlite_python.db')
+        cursor = sqlite_connection.cursor()
+        print("Подключен к SQLite")
+
+        sql_fetch_blob_query = """SELECT * from data_theory"""
+        cursor.execute(sql_fetch_blob_query)
+        record = cursor.fetchall()
+        for row in record:
+            print("Id =", row[0], "Name =", row[1])
+            name = row[1]
+            photo = row[2]
+            print("Сохранение изображения сотрудника на диске \n")
+
+            photo_path = f"{name}.jpg"
+            write_to_file(photo, photo_path)
+
+        cursor.close()
+
+    except sqlite3.Error as error:
+        print("Ошибка при работе с SQLite", error)
+    finally:
+        if sqlite_connection:
+            sqlite_connection.close()
+            print("Соединение с SQLite закрыто")
 
 
 # Команды
@@ -124,11 +153,19 @@ TASK = 1
 
 async def button(update, context) -> None:
     """Функция обработки инлайн-кнопок"""
+
     global TASK
     query = update.callback_query
     chat_id = query.message.chat_id
     query.answer()
     task_type, number_task = query.data.split()
+
+    sqlite_connection = sqlite3.connect('sqlite_python.db')
+    cursor = sqlite_connection.cursor()
+    sql_fetch_blob_query = f"""SELECT * from data_theory WHERE id={number_task}"""
+    cursor.execute(sql_fetch_blob_query)
+    record = cursor.fetchall()
+
 
     if task_type == "tutorial":
         if number_task == "info":
@@ -148,16 +185,19 @@ async def button(update, context) -> None:
             """
             await query.message.reply_text(text)
         else:
-            tutorial_photo_path = f"db/theory/tutorial{number_task}.jpg"
-            text = f"Теория по заданию №{number_task}"
+            tutorial_photo_path = record[0][2]
+            url = record[0][4]
+            text = f"Теория по заданию №{number_task} 👇"
 
             await query.message.reply_text(text)
-            await context.bot.send_photo(chat_id=chat_id, photo=open(tutorial_photo_path, "rb"))
+            await context.bot.send_document(chat_id=chat_id, document=open(tutorial_photo_path, "rb"))
+            await query.message.reply_text(f"Ссылка на видео: {url}")
+
 
     elif task_type == "practice":
-        practice_file_path = f"db/practice/Uslovia_prototipov_{number_task}.pdf"
+        practice_file_path = record[0][1]
 
-        text = f"Практика по заданию №{number_task}"
+        text = f"Практика по заданию №{number_task} 👇"
         TASK = number_task
 
         keyboard = [
@@ -168,8 +208,8 @@ async def button(update, context) -> None:
         await context.bot.send_document(chat_id=chat_id, document=open(practice_file_path, "rb"),
                                         reply_markup=reply_markup)
     elif task_type == "answer":
-        answer_file_path = f"db/answer/Otvety_prototipov_{TASK}.pdf"
-        text = f"Ответы к заданию №{TASK}"
+        answer_file_path = record[0][3]
+        text = f"Ответы к заданию №{TASK} 👇"
         await query.message.reply_text(text)
         await context.bot.send_document(chat_id=chat_id, document=open(answer_file_path, "rb"))
 
