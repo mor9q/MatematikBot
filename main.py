@@ -57,7 +57,7 @@ def read_blob_data(emp_id):
 
 # Команды
 async def start(update, context) -> None:
-    """Отправляет сообщение когда получена команда /start"""
+    """Отправляет сообщение когда получена команда /start да"""
     try:
         reply_keyboard = [["Учебник 📚", "Практика ✍"], ["Дополнительно ⚙"]]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
