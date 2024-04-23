@@ -13,6 +13,8 @@ from telegram import ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMa
 from config import BOT_TOKEN
 import sqlite3
 
+# from additionally import notes
+
 # Запуск логированияя
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
@@ -23,10 +25,7 @@ logger = logging.getLogger(__name__)
 bot = telegram.Bot(token=BOT_TOKEN)
 
 
-# reply_keyboard = [["Учебник 📚", "Практика ✍️"], ["Дополнительно ⚙️"]]
-# markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 # Синхронные функции
-
 def read_blob_data(emp_id):
     try:
         sqlite_connection = sqlite3.connect('sqlite_python.db')
@@ -60,8 +59,7 @@ async def start(update, context) -> None:
     """Отправляет сообщение когда получена команда /start да"""
     try:
         reply_keyboard = [["Учебник 📚", "Практика ✍"], ["Дополнительно ⚙"]]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-        # await update.message.reply_text("", reply_markup=markup)
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False, resize_keyboard=True)
 
         user = update.effective_user
         chat_id = update.message.chat_id
@@ -73,7 +71,8 @@ async def start(update, context) -> None:
         await context.bot.send_photo(chat_id=chat_id, photo=open(photo_path, 'rb'))
 
         await update.message.reply_text(
-            "У меня есть учебник с актуальной теорией и тесты. Для навигации используй кнопки или меню в нижней части экрана.")
+            "У меня есть учебник с актуальной теорией и тесты. Для навигации используй кнопки или меню в нижней части экрана.",
+            reply_markup=markup, )
 
 
     except Exception as ex:
@@ -148,7 +147,13 @@ async def practice(update, context) -> None:
     await update.message.reply_text("Выбери задание для нарешивания 👇", reply_markup=reply_markup)
 
 
-TASK = 1
+async def additionally(update, context) -> None:
+    chat_id = update.message.chat_id
+    await update.message.reply_text("Топовая шпаргалка со всем материалом!")
+    await context.bot.send_document(chat_id=chat_id, document=open(r"db/additionally/math.pdf", "rb"))
+
+
+TASK: int = 1
 
 
 async def button(update, context) -> None:
@@ -160,12 +165,12 @@ async def button(update, context) -> None:
     query.answer()
     task_type, number_task = query.data.split()
 
-    sqlite_connection = sqlite3.connect('sqlite_python.db')
-    cursor = sqlite_connection.cursor()
-    sql_fetch_blob_query = f"""SELECT * from data_theory WHERE id={number_task}"""
-    cursor.execute(sql_fetch_blob_query)
-    record = cursor.fetchall()
-
+    if number_task != "info":
+        sqlite_connection = sqlite3.connect('sqlite_python.db')
+        cursor = sqlite_connection.cursor()
+        sql_fetch_blob_query = f"""SELECT * from data_theory WHERE id={number_task}"""
+        cursor.execute(sql_fetch_blob_query)
+        record = cursor.fetchall()
 
     if task_type == "tutorial":
         if number_task == "info":
@@ -187,7 +192,7 @@ async def button(update, context) -> None:
         else:
             tutorial_photo_path = record[0][2]
             url = record[0][4]
-            text = f"Теория по заданию №{number_task} 👇"
+            text = f"Теория по заданию №{number_task} ⬇"
 
             await query.message.reply_text(text)
             await context.bot.send_document(chat_id=chat_id, document=open(tutorial_photo_path, "rb"))
@@ -197,7 +202,7 @@ async def button(update, context) -> None:
     elif task_type == "practice":
         practice_file_path = record[0][1]
 
-        text = f"Практика по заданию №{number_task} 👇"
+        text = f"Практика по заданию №{number_task} ⬇"
         TASK = number_task
 
         keyboard = [
@@ -209,7 +214,7 @@ async def button(update, context) -> None:
                                         reply_markup=reply_markup)
     elif task_type == "answer":
         answer_file_path = record[0][3]
-        text = f"Ответы к заданию №{TASK} 👇"
+        text = f"Ответы к заданию №{TASK}"
         await query.message.reply_text(text)
         await context.bot.send_document(chat_id=chat_id, document=open(answer_file_path, "rb"))
 
@@ -219,27 +224,29 @@ async def handler_response(update, context) -> None:
     """Функция обработки сообщений"""
     chat_id = update.message.chat_id
     text = update.message.text
-    if text == "1":
-        photo_path = "data/task1.jpg"
-        await context.bot.send_photo(chat_id=chat_id, photo=open(photo_path, "rb"))
-    elif text == "2":
-        photo_path = "data/task2.jpg"
-        await context.bot.send_photo(chat_id=chat_id, photo=open(photo_path, "rb"))
+    if text == "5ORqTM#Z":
+        await update.message.reply_text("-Secret mode is activated-")
+    else:
+        await update.message.reply_text("Пока что я тебя не понимаю 😔")
 
 
 def main() -> None:
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).read_timeout(30).build()
 
     # Команды
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("tutorial", tutorial))
     application.add_handler(CommandHandler("practice", practice))
+    application.add_handler(CommandHandler("additionally", additionally))
+
+    # application.add_handler(CommandHandler("notes", notes))
 
     # Инлайн-кнопки
     application.add_handler(CallbackQueryHandler(button))
     # Сообщения
     application.add_handler(MessageHandler(filters.Regex("Учебник 📚"), tutorial))
     application.add_handler(MessageHandler(filters.Regex("Практика ✍"), practice))
+    application.add_handler(MessageHandler(filters.Regex("Дополнительно ⚙"), additionally))
     application.add_handler(MessageHandler(filters.TEXT, handler_response))
 
     # Запуск бота
