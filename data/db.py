@@ -68,7 +68,6 @@ def read_blob_data(emp_id):
             sqlite_connection.close()
             print("Соединение с SQLite закрыто")
 
-
 # read_blob_data(1)
 # read_blob_data(2)
 
