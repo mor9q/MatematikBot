@@ -25,35 +25,6 @@ logger = logging.getLogger(__name__)
 bot = telegram.Bot(token=BOT_TOKEN)
 
 
-# Синхронные функции
-def read_blob_data(emp_id):
-    try:
-        sqlite_connection = sqlite3.connect('sqlite_python.db')
-        cursor = sqlite_connection.cursor()
-        print("Подключен к SQLite")
-
-        sql_fetch_blob_query = """SELECT * from data_theory"""
-        cursor.execute(sql_fetch_blob_query)
-        record = cursor.fetchall()
-        for row in record:
-            print("Id =", row[0], "Name =", row[1])
-            name = row[1]
-            photo = row[2]
-            print("Сохранение изображения сотрудника на диске \n")
-
-            photo_path = f"{name}.jpg"
-            write_to_file(photo, photo_path)
-
-        cursor.close()
-
-    except sqlite3.Error as error:
-        print("Ошибка при работе с SQLite", error)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
-            print("Соединение с SQLite закрыто")
-
-
 # Команды
 async def start(update, context) -> None:
     """Отправляет сообщение когда получена команда /start да"""
@@ -238,8 +209,6 @@ def main() -> None:
     application.add_handler(CommandHandler("tutorial", tutorial))
     application.add_handler(CommandHandler("practice", practice))
     application.add_handler(CommandHandler("additionally", additionally))
-
-    # application.add_handler(CommandHandler("notes", notes))
 
     # Инлайн-кнопки
     application.add_handler(CallbackQueryHandler(button))
